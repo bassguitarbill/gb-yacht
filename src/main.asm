@@ -28,6 +28,11 @@ DIE_3_VALUE EQU $FF82
 DIE_4_VALUE EQU $FF83
 DIE_5_VALUE EQU $FF84
 
+BUTTONS_PRESSED EQU $FF85
+BUTTON_DIFF EQU $FF86
+
+CURRENTLY_SELECTED_DIE EQU $FF87
+
 ONES_COUNT 			EQU $FF90
 TWOS_COUNT 			EQU $FF91
 THREES_COUNT 		EQU $FF92
@@ -215,6 +220,16 @@ Start:
 	inc a
 	ld [hli], a
 
+.initCursorSprite
+	ld hl, _OAMRAM
+	ld a, 39  ; y
+	ld [hli], a
+	ld a, 16   ; x
+	ld [hli], a
+	ld a, $4B ; sprite index
+	ld [hli], a
+	ld a, %00001000
+	ld [hli], a
 
 .exampleInitCode
 	ld hl, DIE_1_VALUE
@@ -229,8 +244,12 @@ Start:
 	ld a, 4
 	ld [hli], a
 
+	xor a
+	ld [BUTTONS_PRESSED], a
+
 	ld a, 1
 	ld [SCORE_IS_STALE], a
+	ld [CURRENTLY_SELECTED_DIE], a
 
 	; init display!
 	ld a, %11100100
@@ -248,7 +267,7 @@ Start:
 	ld a, %10010011
 	ld [rLCDC], a
 
-	ld a, $ff ; Interrupts on
+	ld a, $0F ; Interrupts on
 	ld [$ffff], a
 	 
 
@@ -265,13 +284,166 @@ Start:
 
 VBlankHandler:
 	di
+	call .getInput
+	call .handleInput
 	call .calculateScore
 	call .drawDice
 	call .displayScore
 	ei
 	reti
 
+.getInput
+	ld hl, _IO
+	ld a, %00010000 ; direction buttons
+	ld [hl], a
+	ld a, [hl]
+	ld a, [hl]
+	ld a, [hl]
+	ld a, [hl]
+	ld a, [hl] 	; okay okay he's had enough
+	cpl 				; 1 means 'pressed'
+	and $0F			; blank out unused buttons
+	swap a			; put buttons in the bottom nybble
+	ld b, a			; store it
+
+	ld a, %00100000 ; direction buttons
+	ld [hl], a
+	ld a, [hl]
+	ld a, [hl]
+	ld a, [hl]
+	ld a, [hl]
+	ld a, [hl]
+	cpl 				; 1 means 'pressed'
+	and $0F			; blank out unused buttons
+	or b
+
+	ld b, a									; b = current frame
+	ld a, [BUTTONS_PRESSED] ; a = last frame
+	xor b										; a = diff from last frame
+	and b										; a = buttondown this frame
+
+	;xor a
+	ld [BUTTON_DIFF], a
+	ld [CHANCE_SCORE], a
+	ld a, b
+	ld [BUTTONS_PRESSED], a
+	reti
+
+.handleInput
+	nop
+	nop ; No idea why these are necessary
+	nop
+	nop
+	nop ; No idea why these are necessary
+	nop
+	nop
+	nop ; No idea why these are necessary
+	nop
+	nop
+	nop ; No idea why these are necessary
+	nop
+	nop
+	nop
+	nop ; No idea why these are necessary
+	nop
+	nop
+	nop
+	nop ; No idea why these are necessary
+	nop
+	nop
+	nop
+	nop ; No idea why t
+	nop
+	nop
+	nop ; No idea why these are necessary
+	nop
+	nop
+	nop
+	nop ; No idea why t
+	nop
+	nop
+	nop ; No idea why these are necessary
+	nop
+	nop
+	nop
+	nop ; No idea why these are necessary
+	nop
+	ld a, [BUTTON_DIFF]
+	cp 1
+	jr z, .nextDie
+	cp 2
+	jr z, .prevDie
+	cp 4
+	jr z, .increaseCurrentDie
+	cp 8
+	jr z, .decreaseCurrentDie
+	jr .doneWithInput
+
+.nextDie
+	ld a, [CURRENTLY_SELECTED_DIE]
+	inc a
+	cp 6
+	jr nz, .noNextDieOverflow
+	ld a, 1
+.noNextDieOverflow
+	ld [CURRENTLY_SELECTED_DIE], a
+	jr .doneWithInput
+
+.prevDie
+	ld a, [CURRENTLY_SELECTED_DIE]
+	dec a
+	cp 0
+	jr nz, .noPrevDieUnderflow
+	ld a, 5
+.noPrevDieUnderflow
+	ld [CURRENTLY_SELECTED_DIE], a
+	jr .doneWithInput
+
+.increaseCurrentDie
+	ld a, 1
+	ld [SCORE_IS_STALE], a
+	ld a, [CURRENTLY_SELECTED_DIE]
+	ld hl, $FF7F ; Right before the dice values start
+	ld b, 0
+	ld c, a
+	add hl, bc
+	ld a, [hl]   ; Should be the value of the selected die
+	inc a
+	cp 7
+	jr nz, .noIncreaseCurrentDieOverflow
+	ld a, 1
+.noIncreaseCurrentDieOverflow
+	ld [hl], a
+	jr .doneWithInput
+
+.decreaseCurrentDie
+	ld a, 1
+	ld [SCORE_IS_STALE], a
+	ld a, [CURRENTLY_SELECTED_DIE]
+	ld hl, $FF7F ; Right before the dice values start
+	ld b, 0
+	ld c, a
+	add hl, bc
+	ld a, [hl]   ; Should be the value of the selected die
+	dec a
+	cp 0
+	jr nz, .noDecreaseCurrentDieOverflow
+	ld a, 6
+.noDecreaseCurrentDieOverflow
+	ld [hl], a
+	jr .doneWithInput
+
+.doneWithInput
+	reti
+
 .drawDice
+	ld   hl, $FF41     ; STAT Register
+.drawDiceWait
+  ld a, [hl]       ; Wait until Mode is 0 or 1
+	and $01
+	cp $01
+	jr   nz, .drawDiceWait
+	
 	ld hl, DIE_1_VALUE
 	ld a, [hl]
 	ld d, a
@@ -738,6 +910,10 @@ VBlankHandler:
 
 	add hl, bc
 	ld a, [CHANCE_SCORE]
+	ld [hl], a
+
+	inc hl
+	ld a, [CURRENTLY_SELECTED_DIE]
 	ld [hl], a
 	
 	reti 
