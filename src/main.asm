@@ -376,6 +376,7 @@ VBlankHandler:
 	ld a, 1
 .noIncreaseCurrentDieOverflow
 	ld [hl], a
+	ld a, [CURRENTLY_SELECTED_DIE]
 	call .drawDieIndex
 	jr .doneWithInput
 
@@ -394,6 +395,7 @@ VBlankHandler:
 	ld a, 6
 .noDecreaseCurrentDieOverflow
 	ld [hl], a
+	ld a, [CURRENTLY_SELECTED_DIE]
 	call .drawDieIndex
 	jr .doneWithInput
 
@@ -459,13 +461,14 @@ VBlankHandler:
 	ld c, a    	; c contains Y
 	ld a, d
 
-	ld hl, $FF79
+	ld hl, $FF7F
 	ld d, 0
 	ld e, a
 	add hl, de
 	ld a, [hl]
 	ld d, a ; d contains the dice value
 	call .drawDie
+	reti
 
 
 ; draw die - draws a die to the screen on the background layer
