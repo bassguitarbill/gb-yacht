@@ -330,44 +330,6 @@ VBlankHandler:
 	reti
 
 .handleInput
-	nop
-	nop ; No idea why these are necessary
-	nop
-	nop
-	nop ; No idea why these are necessary
-	nop
-	nop
-	nop ; No idea why these are necessary
-	nop
-	nop
-	nop ; No idea why these are necessary
-	nop
-	nop
-	nop
-	nop ; No idea why these are necessary
-	nop
-	nop
-	nop
-	nop ; No idea why these are necessary
-	nop
-	nop
-	nop
-	nop ; No idea why t
-	nop
-	nop
-	nop ; No idea why these are necessary
-	nop
-	nop
-	nop
-	nop ; No idea why t
-	nop
-	nop
-	nop ; No idea why these are necessary
-	nop
-	nop
-	nop
-	nop ; No idea why these are necessary
-	nop
 	ld a, [BUTTON_DIFF]
 	cp 1
 	jr z, .nextDie
@@ -443,7 +405,7 @@ VBlankHandler:
 	and $01
 	cp $01
 	jr   nz, .drawDiceWait
-	
+
 	ld hl, DIE_1_VALUE
 	ld a, [hl]
 	ld d, a
