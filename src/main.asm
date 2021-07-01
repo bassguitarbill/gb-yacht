@@ -287,7 +287,7 @@ VBlankHandler:
 	call .getInput
 	call .handleInput
 	call .calculateScore
-	call .drawDice
+	;call .drawDice
 	call .displayScore
 	ei
 	reti
@@ -376,6 +376,7 @@ VBlankHandler:
 	ld a, 1
 .noIncreaseCurrentDieOverflow
 	ld [hl], a
+	call .drawDieIndex
 	jr .doneWithInput
 
 .decreaseCurrentDie
@@ -393,6 +394,7 @@ VBlankHandler:
 	ld a, 6
 .noDecreaseCurrentDieOverflow
 	ld [hl], a
+	call .drawDieIndex
 	jr .doneWithInput
 
 .doneWithInput
@@ -443,11 +445,34 @@ VBlankHandler:
 
 	reti
 
+; a - which die to draw (1 through 5)
+.drawDieIndex
+	ld d, a ; save the die for later
+	ld hl, DicePosition ; Load into the dice position data
+	ld b, 0
+	ld c, a	; half of index into dice position data 
+	sla c ; Each position is 2 bytes
+	add hl, bc ; correct X is now in [hl]
+	ld a, [hli]
+	ld b, a			; b contains X
+	ld a, [hl]
+	ld c, a    	; c contains Y
+	ld a, d
+
+	ld hl, $FF79
+	ld d, 0
+	ld e, a
+	add hl, de
+	ld a, [hl]
+	ld d, a ; d contains the dice value
+	call .drawDie
+
+
 ; draw die - draws a die to the screen on the background layer
 ; args
-; 	d - the face of the die to draw, from 1 to 6
 ;		b - the x-coordinate of the top-left corner of the die
 ;		c - the y-coordinate of the top-left corner of the die
+; 	d - the face of the die to draw, from 1 to 6
 
 .drawDie
 	ld hl, _SCRN0 ; point to the top left of the screen
@@ -892,3 +917,11 @@ Tiles:
 INCBIN "tiles.2bpp"
 TilesEnd:
 
+SECTION "Dice", ROM0
+
+DiceXPosition:
+	DB 0, 2, 6, 10, 4, 8
+DiceYPosition:
+	DB 0, 2, 2, 2, 6, 6
+DicePosition:
+	DB 0, 0, 2, 2, 6, 2, 10, 2, 4, 6, 8 ,6
