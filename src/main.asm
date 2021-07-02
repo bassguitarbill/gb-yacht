@@ -59,6 +59,8 @@ CHANCE_SCORE					EQU $FFAE
 
 SCORE_IS_STALE				EQU $FFAF
 
+CURSOR_SPRITE	equ	_OAMRAM
+
 
 SECTION "Game code", ROM0
 
@@ -324,7 +326,6 @@ VBlankHandler:
 
 	;xor a
 	ld [BUTTON_DIFF], a
-	ld [CHANCE_SCORE], a
 	ld a, b
 	ld [BUTTONS_PRESSED], a
 	reti
@@ -349,6 +350,7 @@ VBlankHandler:
 	ld a, 1
 .noNextDieOverflow
 	ld [CURRENTLY_SELECTED_DIE], a
+	call .drawCursor
 	jr .doneWithInput
 
 .prevDie
@@ -359,6 +361,7 @@ VBlankHandler:
 	ld a, 5
 .noPrevDieUnderflow
 	ld [CURRENTLY_SELECTED_DIE], a
+	call .drawCursor
 	jr .doneWithInput
 
 .increaseCurrentDie
@@ -588,6 +591,30 @@ VBlankHandler:
 .pipBottomRight
 	ld [hl], a
 	reti
+
+; loads the currently-selected die from memory
+; and draws the sprite cursor in the correct
+; location to point to that die
+.drawCursor
+	ld a, [CURRENTLY_SELECTED_DIE]
+	ld hl, CursorDicePosition
+	ld b, 0
+	ld c, a
+	sla c
+	add hl, bc
+	ld a, [hli]
+	ld b, a ; b = y position
+	ld a, [hl]
+	ld c, a ; c = x position
+
+	ld hl, CURSOR_SPRITE
+	ld a, b
+	ld [hli], a
+	ld a, c
+	ld [hl], a
+
+	reti
+
 
 .calculateScore
 	; check for staleness
@@ -901,18 +928,8 @@ VBlankHandler:
 	add hl, bc
 	ld a, [CHANCE_SCORE]
 	ld [hl], a
-
-	inc hl
-	ld a, [CURRENTLY_SELECTED_DIE]
-	ld [hl], a
 	
 	reti 
-
-
-
-
-
-
 
 SECTION "Tiles", ROM0
 
@@ -922,9 +939,20 @@ TilesEnd:
 
 SECTION "Dice", ROM0
 
-DiceXPosition:
-	DB 0, 2, 6, 10, 4, 8
-DiceYPosition:
-	DB 0, 2, 2, 2, 6, 6
 DicePosition:
-	DB 0, 0, 2, 2, 6, 2, 10, 2, 4, 6, 8 ,6
+	DB 0, 0		; 0th die
+	DB 2, 2		; 1st die
+	DB 6, 2		; 2nd die
+	DB 10, 2	; 3rd die
+	DB 4, 6		; 4th die
+	DB 8 ,6		; 5th die
+	
+SECTION "Cursor", ROM0
+
+CursorDicePosition:
+	DB 0, 0 	; 0th die
+	DB 39, 16	; 1st die
+	DB 39, 48	; 2nd die
+	DB 39, 80	; 3rd die
+	DB 71, 32	; 4th die
+	DB 71, 64	; 5th die
