@@ -59,6 +59,8 @@ CHANCE_SCORE					EQU $FFAE
 
 SCORE_IS_STALE				EQU $FFAF
 
+RNG EQU $FFB0
+
 CURSOR_SPRITE	equ	_OAMRAM
 
 
@@ -929,7 +931,36 @@ VBlankHandler:
 	ld a, [CHANCE_SCORE]
 	ld [hl], a
 	
+	reti
+
+; sets a to a (pseudo-) random (non-zero) value
+.rng
+	ld a, [RNG]
+	sla a
+	jr c, .noXOR
+	xor $1d
+.noXOR
+	ld [RNG], a
+	reti
+
+; gets a random 1-6 dice roll from a
+.randomRoll
+	cp $20 ; 000xxxxx
+	jr c, .tooLow
+	cp $e0 ; 111xxxxx
+	jr nc, .tooHigh
+	srl a
+	srl a
+	srl a
+	srl a
+	srl a
 	reti 
+.tooLow
+.tooHigh
+	call .rng
+	jr .randomRoll
+	reti
+
 
 SECTION "Tiles", ROM0
 
@@ -956,3 +987,9 @@ CursorDicePosition:
 	DB 39, 80	; 3rd die
 	DB 71, 32	; 4th die
 	DB 71, 64	; 5th die
+
+SECTION "Title Screen", ROM0
+
+TitleScreenTiles:
+INCBIN "titleScreenTiles.bin"
+TitleScreenTilesEnd:
