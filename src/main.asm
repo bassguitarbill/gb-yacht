@@ -98,134 +98,14 @@ Start:
 	jr nz, .clearSprite
 
 .initScoreDisplay
-	ld hl, $9941
-	ld a, $1F
-	ld [hli], a
-	inc a
-	ld [hli], a
-	inc a
-	ld [hli], a
-
-	ld hl, $9961
-	ld a, $22
-	ld [hli], a
-	inc a
-	ld [hli], a
-	inc a
-	ld [hli], a
-
-	ld hl, $9981
-	ld a, $25
-	ld [hli], a
-	inc a
-	ld [hli], a
-	ld a, $21
-	ld [hli], a
-
-	ld hl, $99A1
-	ld a, $27
-	ld [hli], a
-	ld a, $29
-	ld [hli], a
-	inc a
-	ld [hli], a
-
-	ld hl, $99C1
-	ld a, $2B
-	ld [hli], a
-	inc a
-	ld [hli], a
-	ld a, $21
-	ld [hli], a
-
-	ld hl, $99E1
-	ld a, $2D
-	ld [hli], a
-	inc a
-	ld [hli], a
-	ld a, $21
-	ld [hli], a
-
-	
-	ld hl, $9948
-	ld a, $2F
-	ld [hli], a
-	inc a
-	ld [hli], a
-	inc a
-	ld [hli], a
-	inc a
-	inc a
-	ld [hli], a
-
-	ld hl, $9968
-	ld a, $34
-	ld [hli], a
-	inc a
-	ld [hli], a
-	inc a
-	ld [hli], a
-	inc a
-	ld [hli], a
-
-	ld hl, $9988
-	ld a, $38
-	ld [hli], a
-	inc a
-	ld [hli], a
-	inc a
-	ld [hli], a
-	ld a, $37
-	ld [hli], a
-
-	ld hl, $99A6
-	ld a, $3B
-	ld [hli], a
-	inc a
-	ld [hli], a
-	inc a
-	ld [hli], a
-	inc a
-	ld [hli], a
-	inc a
-	ld [hli], a
-	inc a
-	ld [hli], a
-
-	ld hl, $99C6
-	ld a, $41
-	ld [hli], a
-	inc a
-	ld [hli], a
-	inc a
-	ld [hli], a
-	ld a, $3E
-	ld [hli], a
-	inc a
-	ld [hli], a
-	inc a
-	ld [hli], a
-
-	ld hl, $99E9
-	ld a, $44
-	ld [hli], a
-	inc a
-	ld [hli], a
-	inc a
-	ld [hli], a
-
-	ld hl, $9A08
-	ld a, $47
-	ld [hli], a
-	inc a
-	ld [hli], a
-	inc a
-	ld [hli], a
-	inc a
-	ld [hli], a
+	ld bc, ScoreTiles
+	ld de, ScoreTilesEnd - ScoreTiles
+	ld hl, _SCRN0
+	; ld a, 20 ; screen width
+	call CopyTilesToScreen
 
 .initCursorSprite
-	ld hl, _OAMRAM
+	ld hl, CURSOR_SPRITE
 	ld a, 39  ; y
 	ld [hli], a
 	ld a, 16   ; x
@@ -268,7 +148,8 @@ Start:
 	ld [rNR52], a
 
 	; screen, sprites, and bg on
-	ld a, %10010011
+	; ld a, %10010011
+	ld a, LCDCF_ON | LCDCF_WIN9800 | LCDCF_WINOFF | LCDCF_BG8000 | LCDCF_BG9800 | LCDCF_OBJ8 | LCDCF_OBJON | LCDCF_BGON
 	ld [rLCDC], a
 
 	ld a, $0F ; Interrupts on
@@ -279,6 +160,43 @@ Start:
 	ei
 	halt 
 	jr .lockup
+
+; bc - the starting address of your map
+; de - the length of your map in bytes
+; hl - the tile to start writing these tiles
+;
+; this function will wrap every 20 ($14) tiles!
+; it does not write the full 32 ($20) to fill up the 
+; scrollable sections of the screen
+CopyTilesToScreen:
+.copyTileToScreen
+	ld a, [bc]
+	ld [hli], a
+	inc bc
+	dec de
+	ld a, d
+	or e
+	jr z, .finished
+
+	ld a, l ; if hl % 32 > 20, scroll to the next line
+	and a, %00011111
+	cp 20
+	jr nz, .copyTileToScreen
+	inc hl ; there
+	inc hl ; is
+	inc hl ; no
+	inc hl ; good
+	inc hl ; way
+	inc hl ; to
+	inc hl ; add
+	inc hl ; 12
+	inc hl ; to
+	inc hl ; hl
+	inc hl ; without
+	inc hl ; registers
+	jr .copyTileToScreen
+.finished
+	reti
 
 ; +---------------------------------------------------------+
 ; |                                                         |
@@ -310,7 +228,7 @@ VBlankHandler:
 	swap a			; put buttons in the bottom nybble
 	ld b, a			; store it
 
-	ld a, %00100000 ; direction buttons
+	ld a, %00100000 ; a b start select
 	ld [hl], a
 	ld a, [hl]
 	ld a, [hl]
@@ -993,3 +911,8 @@ SECTION "Title Screen", ROM0
 TitleScreenTiles:
 INCBIN "titleScreenTiles.bin"
 TitleScreenTilesEnd:
+
+SECTION "Score Layout", ROM0
+ScoreTiles:
+	INCBIN "scoreTiles.bin"
+ScoreTilesEnd:
