@@ -22,6 +22,8 @@ PIP_FIELD_4 EQU %01100011 ;      6   7
 PIP_FIELD_5 EQU %01101011 ;  |_         _|
 PIP_FIELD_6 EQU %01110111 ;
 
+DEFAULT_RLCDC EQU LCDCF_ON | LCDCF_WIN9800 | LCDCF_WINOFF | LCDCF_BG8000 | LCDCF_BG9800 | LCDCF_OBJ8 | LCDCF_OBJON | LCDCF_BGON
+
 DIE_1_VALUE EQU $FF80
 DIE_2_VALUE EQU $FF81
 DIE_3_VALUE EQU $FF82
@@ -61,6 +63,8 @@ SCORE_IS_STALE				EQU $FFAF
 
 RNG EQU $FFB0
 
+GAME_STATE EQU $FFB1
+
 CURSOR_SPRITE	equ	_OAMRAM
 
 
@@ -97,23 +101,11 @@ Start:
 	dec c
 	jr nz, .clearSprite
 
-.initScoreDisplay
-	ld bc, ScoreTiles
-	ld de, ScoreTilesEnd - ScoreTiles
+.initTitleScreenDisplay
+	ld bc, TitleScreenTiles
+	ld de, TitleScreenTilesEnd - TitleScreenTiles
 	ld hl, _SCRN0
-	; ld a, 20 ; screen width
 	call CopyTilesToScreen
-
-.initCursorSprite
-	ld hl, CURSOR_SPRITE
-	ld a, 39  ; y
-	ld [hli], a
-	ld a, 16   ; x
-	ld [hli], a
-	ld a, $4B ; sprite index
-	ld [hli], a
-	ld a, %00001000
-	ld [hli], a
 
 .exampleInitCode
 	ld hl, DIE_1_VALUE
@@ -130,6 +122,7 @@ Start:
 
 	xor a
 	ld [BUTTONS_PRESSED], a
+	ld [GAME_STATE], a
 
 	ld a, 1
 	ld [SCORE_IS_STALE], a
@@ -149,7 +142,7 @@ Start:
 
 	; screen, sprites, and bg on
 	; ld a, %10010011
-	ld a, LCDCF_ON | LCDCF_WIN9800 | LCDCF_WINOFF | LCDCF_BG8000 | LCDCF_BG9800 | LCDCF_OBJ8 | LCDCF_OBJON | LCDCF_BGON
+	ld a, DEFAULT_RLCDC
 	ld [rLCDC], a
 
 	ld a, $0F ; Interrupts on
@@ -194,11 +187,17 @@ CopyTilesToScreen:
 	inc hl ; hl
 	inc hl ; without
 	inc hl ; registers
-	
+
 	jr .copyTileToScreen
 .finished
 	reti
 
+WaitForVBlank:
+	ld   hl, $FF41     ; STAT Register
+.wait
+	bit  1, [hl]       ; Wait until Mode is 0 or 1
+	jr   nz, .wait
+	reti
 ; +---------------------------------------------------------+
 ; |                                                         |
 ; |                      GAME LOOP                          |
@@ -207,13 +206,100 @@ CopyTilesToScreen:
 
 VBlankHandler:
 	di
+	xor a
+	ld b, a
+	ld a, [GAME_STATE]
+	sla a
+	sla a
+	ld c, a
+	ld hl, .gameStateSwitch
+	add hl, bc
+	jp hl
+.gameStateSwitch
+	jp .gameStateTitleScreen	; GAME_STATE = 0
+	nop
+	jp .gameStateLoadingMain	; GAME_STATE = 1
+	nop
+	jp .gameStateMain					; GAME_STATE = 2
+	nop
+.endGameStateSwitch
+	ei 
+	reti 
+
+.gameStateTitleScreen
+	call .rng
+	call .getInput
+	call .handleInputTitleScreen
+	jp .endGameStateSwitch
+
+.handleInputTitleScreen
+	; a = buttonsPressed
+	and %10000000 ; Top bit is Start
+	jr z, .doneHandlingInputTitleScreen
+	ld a, 1
+	ld [GAME_STATE], a
+.doneHandlingInputTitleScreen
+	reti 
+
+.gameStateLoadingMain
+	ld a, LCDCF_OFF
+	call WaitForVBlank
+	ld [rLCDC], a
+
+	ld bc, ScoreTiles
+	ld de, ScoreTilesEnd - ScoreTiles
+	ld hl, _SCRN0
+
+	call CopyTilesToScreen
+
+	call .initCursorSprite
+
+	call .rng
+	call .randomRoll
+	ld [DIE_1_VALUE], a
+	call .rng
+	call .randomRoll
+	ld [DIE_2_VALUE], a
+	call .rng
+	call .randomRoll
+	ld [DIE_3_VALUE], a
+	call .rng
+	call .randomRoll
+	ld [DIE_4_VALUE], a
+	call .rng
+	call .randomRoll
+	ld [DIE_5_VALUE], a
+
+	call .drawDice
+	
+	ld a, DEFAULT_RLCDC
+	ld [rLCDC], a
+
+	ld a, 2
+	ld [GAME_STATE], a
+	jp .endGameStateSwitch
+	
+
+.initCursorSprite
+	ld hl, CURSOR_SPRITE
+	ld a, 39  ; y
+	ld [hli], a
+	ld a, 16   ; x
+	ld [hli], a
+	ld a, $4B ; sprite index
+	ld [hli], a
+	ld a, %00001000
+	ld [hli], a
+	reti
+
+.gameStateMain
 	call .getInput
 	call .handleInput
 	call .calculateScore
 	;call .drawDice
 	call .displayScore
 	ei
-	reti
+	jp .endGameStateSwitch
 
 .getInput
 	ld hl, _IO
@@ -327,12 +413,6 @@ VBlankHandler:
 	reti
 
 .drawDice
-	ld   hl, $FF41     ; STAT Register
-.drawDiceWait
-  ld a, [hl]       ; Wait until Mode is 0 or 1
-	and $01
-	cp $01
-	jr   nz, .drawDiceWait
 
 	ld hl, DIE_1_VALUE
 	ld a, [hl]
