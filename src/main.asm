@@ -271,7 +271,7 @@ VBlankHandler:
 	ld [DIE_5_VALUE], a
 
 	call .drawDice
-	
+
 	ld a, DEFAULT_RLCDC
 	ld [rLCDC], a
 
@@ -964,7 +964,7 @@ VBlankHandler:
 SECTION "Tiles", ROM0
 
 Tiles:
-INCBIN "tiles.2bpp"
+INCBIN "target/tiles.2bpp"
 TilesEnd:
 
 SECTION "Dice", ROM0
@@ -990,10 +990,10 @@ CursorDicePosition:
 SECTION "Title Screen", ROM0
 
 TitleScreenTiles:
-INCBIN "titleScreenTiles.bin"
+INCBIN "target/titleScreenTiles.bin"
 TitleScreenTilesEnd:
 
 SECTION "Score Layout", ROM0
 ScoreTiles:
-	INCBIN "scoreTiles.bin"
+INCBIN "target/scoreTiles.bin"
 ScoreTilesEnd:

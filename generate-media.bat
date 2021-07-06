@@ -1,1 +1,1 @@
-rgbgfx -f -o lib/tiles.2bpp media/tiles.png
+rgbgfx -f -o target/tiles.2bpp media/tiles.png
