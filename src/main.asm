@@ -730,9 +730,9 @@ VBlankHandler:
 	ld c, a
 
 	ld a, [SIXES_COUNT]
+	call .checkCountForNonFullHouseNumber
 	cp d
 	jr c, .sixIsNotHighestCount
-	call .checkCountForNonFullHouseNumber
 	ld d, a
 .sixIsNotHighestCount
 	ld b, a
